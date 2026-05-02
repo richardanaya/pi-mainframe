@@ -216,6 +216,12 @@ async function createThread(name) {
 async function deleteThread(tid) {
   if (!confirm(`Delete thread "${stripPrefix(threads.find((t) => t.id === tid)?.name)}"?`)) return;
 
+  // Optimistically remove from sidebar immediately
+  threads = threads.filter((t) => t.id !== tid);
+  renderThreads();
+
+  if (selectedThreadId === tid) selectThread(null);
+
   try {
     // Dispose pi session if active for this thread
     if (activeSession && activeSession.threadId === tid) {
@@ -225,9 +231,10 @@ async function deleteThread(tid) {
 
     await api(`/api/sandboxes/${tid}`, { method: "DELETE" });
     await loadThreads();
-    if (selectedThreadId === tid) selectThread(null);
   } catch (err) {
     alert("Failed to delete: " + err.message);
+    // Re-sync in case the optimistic removal was wrong
+    await loadThreads();
   }
 }
 
