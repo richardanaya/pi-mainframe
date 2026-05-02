@@ -22,6 +22,22 @@ let selectedThreadId = null;
 /** Is the agent currently streaming? */
 let isStreaming = false;
 
+// ── URL helpers ────────────────────────────────────────────────────────────
+
+function getThreadFromURL() {
+  return new URLSearchParams(window.location.search).get("thread") || null;
+}
+
+function updateURL(threadId) {
+  const url = new URL(window.location);
+  if (threadId) {
+    url.searchParams.set("thread", threadId);
+  } else {
+    url.searchParams.delete("thread");
+  }
+  history.replaceState(null, "", url);
+}
+
 // ── DOM refs ────────────────────────────────────────────────────────────────
 
 const $sidebar = document.getElementById("sidebar");
@@ -74,6 +90,15 @@ function escapeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
+}
+
+function extractMessageText(msg) {
+  if (!msg.content) return "";
+  if (typeof msg.content === "string") return msg.content;
+  if (Array.isArray(msg.content)) {
+    return msg.content.map((c) => c.text || "").join("");
+  }
+  return "";
 }
 
 // ── Threads ─────────────────────────────────────────────────────────────────
@@ -210,6 +235,7 @@ async function deleteThread(tid) {
 
 async function selectThread(threadId) {
   selectedThreadId = threadId;
+  updateURL(threadId);
 
   if (!threadId) {
     $chatView.classList.add("hidden");
@@ -287,10 +313,11 @@ async function selectThread(threadId) {
     const msgData = await api(`/api/sessions/${session.id}/messages`);
     $messages.innerHTML = "";
     for (const msg of msgData.messages || []) {
-      if (msg.type === "user") {
-        appendMessage("user", msg.content?.[0]?.text || JSON.stringify(msg.content));
-      } else if (msg.type === "assistant") {
-        appendMessage("assistant", msg.content?.[0]?.text || "");
+      const text = extractMessageText(msg);
+      if (msg.role === "user") {
+        appendMessage("user", text || JSON.stringify(msg.content));
+      } else if (msg.role === "assistant") {
+        appendMessage("assistant", text);
       }
     }
 
@@ -481,5 +508,22 @@ $promptInput.addEventListener("keydown", (e) => {
 
 // ── Init ────────────────────────────────────────────────────────────────────
 
-loadThreads();
-setInterval(loadThreads, 15000); // Poll for thread updates every 15s
+(async () => {
+  await loadThreads();
+
+  // Auto-select thread from URL on initial load
+  const threadFromURL = getThreadFromURL();
+  if (threadFromURL && threads.find((t) => t.id === threadFromURL)) {
+    selectThread(threadFromURL);
+  }
+
+  // Handle browser back/forward
+  window.addEventListener("popstate", () => {
+    const id = getThreadFromURL();
+    if (id && id !== selectedThreadId) {
+      selectThread(id);
+    } else if (!id && selectedThreadId) {
+      selectThread(null);
+    }
+  });
+})();
