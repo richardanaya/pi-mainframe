@@ -195,11 +195,14 @@ export class PiManager {
     let sessionManager: SessionManager;
     const sandboxFlag = options.extensionFlags?.get("sandbox");
     const sandboxName = typeof sandboxFlag === "string" && sandboxFlag.length > 0 ? sandboxFlag : undefined;
+    // Use the human-readable label for the session filename (matches sandbox name),
+    // falling back to the sandbox ID if no label is set.
+    const sessionName = (options.label && options.label.length > 0) ? options.label : sandboxName;
 
-    if (sandboxName) {
-      // Persist sandbox sessions to sessions/<sandboxName>.jsonl
+    if (sessionName) {
+      // Persist sandbox sessions to sessions/<name>.jsonl
       const sessionsDir = join(cwd, "sessions");
-      const sessionFile = join(sessionsDir, `${sandboxName}.jsonl`);
+      const sessionFile = join(sessionsDir, `${sessionName}.jsonl`);
       sessionManager = SessionManager.open(sessionFile, sessionsDir, cwd);
     } else if (options.continueRecent) {
       sessionManager = SessionManager.continueRecent(cwd);
