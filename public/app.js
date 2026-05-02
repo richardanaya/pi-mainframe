@@ -107,6 +107,8 @@ async function loadThreads() {
   try {
     const data = await api("/api/sandboxes");
     threads = data.sandboxes || [];
+    // Filter out sandboxes that are being destroyed or already destroyed
+    threads = threads.filter((s) => s.state !== "destroying" && s.state !== "destroyed");
 
     // Show/hide Daytona badge
     if (data.daytonaConfigured) {
