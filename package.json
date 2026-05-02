@@ -12,8 +12,9 @@
     "dev": "tsx src/server.ts"
   },
   "dependencies": {
+    "@mariozechner/pi-ai": "latest",
     "@mariozechner/pi-coding-agent": "latest",
-    "@mariozechner/pi-ai": "latest"
+    "node-cron": "^4.2.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

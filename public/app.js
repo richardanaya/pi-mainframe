@@ -13,6 +13,9 @@
 /** All threads (Daytona sandboxes) */
 let threads = [];
 
+/** All scheduled tasks */
+let tasks = [];
+
 /** Active pi session ID → { threadId, ... } */
 let activeSession = null;
 
@@ -52,6 +55,8 @@ const $btnNewThread = document.getElementById("btn-new-thread");
 const $btnCompact = document.getElementById("btn-compact");
 const $btnDeleteThread = document.getElementById("btn-delete-thread");
 const $daytonaBadge = document.getElementById("daytona-badge");
+const $taskList = document.getElementById("task-list");
+const $btnNewTask = document.getElementById("btn-new-task");
 
 // ── Utility ─────────────────────────────────────────────────────────────────
 
@@ -237,6 +242,121 @@ async function deleteThread(tid) {
     alert("Failed to delete: " + err.message);
     // Re-sync in case the optimistic removal was wrong
     await loadThreads();
+  }
+}
+
+// ── Tasks ──────────────────────────────────────────────────────────────────
+
+async function loadTasks() {
+  try {
+    const data = await api("/api/tasks");
+    tasks = data.tasks || [];
+    renderTasks();
+  } catch (err) {
+    console.error("Failed to load tasks:", err);
+  }
+}
+
+function renderTasks() {
+  if (!$taskList) return;
+  $taskList.innerHTML = "";
+
+  if (tasks.length === 0) {
+    $taskList.innerHTML =
+      '<div style="padding:8px 12px;color:var(--text-muted);font-size:11px;">No tasks yet.</div>';
+    return;
+  }
+
+  for (const t of tasks) {
+    const el = document.createElement("div");
+    el.className = "task-item";
+    el.dataset.taskName = t.name;
+
+    const enabledClass = t.enabled ? "enabled" : "disabled";
+    const lastRun = t.lastRun ? formatDate(t.lastRun) : "never";
+
+    el.innerHTML = `
+      <div class="task-row">
+        <span class="task-state ${enabledClass}"></span>
+        <span class="task-name">${escapeHtml(t.name)}</span>
+        <span class="task-cron">${escapeHtml(t.cron)}</span>
+      </div>
+      <div class="task-row task-meta">
+        <span>Last: ${lastRun}</span>
+        <button class="task-run" data-task-name="${escapeHtml(t.name)}" title="Run now">▶</button>
+        <button class="task-toggle" data-task-name="${escapeHtml(t.name)}" title="${t.enabled ? "Disable" : "Enable"}">
+          ${t.enabled ? "⏸" : "▶"}
+        </button>
+        <button class="task-delete" data-task-name="${escapeHtml(t.name)}" title="Delete">×</button>
+      </div>
+    `;
+
+    $taskList.appendChild(el);
+  }
+
+  // Event handlers
+  $$(".task-run").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const name = btn.dataset.taskName;
+      addSystemMessage(`Running task "${name}"...`);
+      try {
+        await api(`/api/tasks/${encodeURIComponent(name)}/run`, { method: "POST" });
+        addSystemMessage(`Task "${name}" completed`);
+        await loadTasks();
+      } catch (err) {
+        addSystemMessage(`Task "${name}" failed: ${err.message}`, true);
+      }
+    });
+  });
+
+  $$(".task-toggle").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const name = btn.dataset.taskName;
+      const task = tasks.find((t) => t.name === name);
+      if (!task) return;
+      const endpoint = task.enabled ? "disable" : "enable";
+      try {
+        await api(`/api/tasks/${encodeURIComponent(name)}/${endpoint}`, { method: "POST" });
+        await loadTasks();
+      } catch (err) {
+        console.error("Toggle failed:", err);
+      }
+    });
+  });
+
+  $$(".task-delete").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const name = btn.dataset.taskName;
+      if (!confirm(`Delete task "${name}"?`)) return;
+      try {
+        await api(`/api/tasks/${encodeURIComponent(name)}`, { method: "DELETE" });
+        await loadTasks();
+      } catch (err) {
+        console.error("Delete task failed:", err);
+      }
+    });
+  });
+}
+
+async function createTask() {
+  const name = prompt("Task name:");
+  if (!name) return;
+  const cron = prompt("Cron expression (e.g. 0 9 * * * for daily at 9am):");
+  if (!cron) return;
+  const promptText = prompt("Prompt to send:");
+  if (!promptText) return;
+
+  try {
+    await api("/api/tasks", {
+      method: "POST",
+      body: JSON.stringify({ name, cron, prompt: promptText }),
+    });
+    await loadTasks();
+  } catch (err) {
+    alert("Failed to create task: " + err.message);
   }
 }
 
@@ -508,6 +628,10 @@ $btnSend.addEventListener("click", () => {
 
 $btnCompact.addEventListener("click", doCompact);
 
+if ($btnNewTask) {
+  $btnNewTask.addEventListener("click", createTask);
+}
+
 $promptInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
@@ -518,6 +642,7 @@ $promptInput.addEventListener("keydown", (e) => {
 // ── Init ────────────────────────────────────────────────────────────────────
 
 (async () => {
+  await loadTasks();
   await loadThreads();
 
   // Auto-select thread from URL on initial load

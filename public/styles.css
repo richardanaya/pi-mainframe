@@ -78,11 +78,137 @@ body {
 
 .badge.hidden { display: none; }
 
+/* ── Task list ─────────────────────────────────────────────────────────── */
+
+#task-section {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.section-header {
+  padding: 12px 16px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.btn-icon {
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.btn-icon:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+#task-list {
+  padding: 4px 8px;
+}
+
+.task-item {
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  cursor: default;
+  margin-bottom: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: background 0.15s;
+  border: 1px solid transparent;
+}
+
+.task-item:hover {
+  background: var(--bg-hover);
+}
+
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.task-meta {
+  padding-left: 16px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.task-state {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.task-state.enabled { background: var(--green); }
+.task-state.disabled { background: var(--text-muted); }
+
+.task-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.task-cron {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: monospace;
+  background: var(--bg-tertiary);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.task-run,
+.task-toggle,
+.task-delete {
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.task-run:hover { color: var(--accent); background: var(--bg-tertiary); }
+.task-toggle:hover { color: var(--accent); background: var(--bg-tertiary); }
+.task-delete:hover { color: var(--red); background: #f8514933; }
+
 /* ── Thread list ───────────────────────────────────────────────────────── */
 
-#thread-list {
+#thread-section {
   flex: 1;
   overflow-y: auto;
+}
+
+#thread-list {
   padding: 8px;
 }
 

@@ -36,6 +36,7 @@ import {
   isDaytonaConfigured,
   getDaytonaStatus,
 } from "./daytona-client.js";
+import { TaskManager } from "./task-manager.js";
 
 // ── Resolve public/ dir (next to src/, or CWD) ─────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
@@ -179,6 +180,10 @@ export async function createPiServer(config: ServerConfig = { port: 8888, host: 
     defaultProvider: config.defaultProvider,
     defaultModelId: config.defaultModelId,
   });
+
+  const cwd = process.cwd();
+  const taskManager = new TaskManager(pi, cwd);
+  await taskManager.start();
 
   const router = new Router();
 
@@ -485,6 +490,26 @@ export async function createPiServer(config: ServerConfig = { port: 8888, host: 
       json(res, 404, { error: "Session not found" });
       return;
     }
+
+    // Try to load historical messages from the session file first
+    const sessionFile = handle.session.sessionFile;
+    if (sessionFile) {
+      try {
+        const content = await readFile(sessionFile, "utf-8");
+        const lines = content.trim().split("\n").filter(Boolean);
+        const fileMessages = lines
+          .map((line) => {
+            try { return JSON.parse(line); } catch { return null; }
+          })
+          .filter((entry): entry is { type: string; message?: any } => entry?.type === "message" && entry.message)
+          .map((entry) => entry.message);
+        json(res, 200, { messages: fileMessages });
+        return;
+      } catch {
+        // Fall through to in-memory messages
+      }
+    }
+
     json(res, 200, { messages: pi.getMessages(params!.id) });
   });
 
@@ -564,6 +589,90 @@ export async function createPiServer(config: ServerConfig = { port: 8888, host: 
     try {
       const status = await getDaytonaStatus();
       json(res, 200, status);
+    } catch (err: any) {
+      json(res, 500, { error: err.message });
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // Tasks (scheduled prompt runs)
+  // -----------------------------------------------------------------------
+
+  router.get("/api/tasks", async (_req, res) => {
+    try {
+      const tasks = await taskManager.listTasks();
+      json(res, 200, { tasks });
+    } catch (err: any) {
+      json(res, 500, { error: err.message });
+    }
+  });
+
+  router.get("/api/tasks/:name", async (_req, res, params) => {
+    try {
+      const task = await taskManager.getTask(params!.name);
+      if (!task) {
+        json(res, 404, { error: "Task not found" });
+        return;
+      }
+      json(res, 200, task);
+    } catch (err: any) {
+      json(res, 500, { error: err.message });
+    }
+  });
+
+  router.post("/api/tasks", async (req, res) => {
+    try {
+      const body = await parseBody<any>(req);
+      if (!body.name || !body.cron || !body.prompt) {
+        json(res, 400, { error: "name, cron, and prompt are required" });
+        return;
+      }
+      const task = await taskManager.createTask(body.name, body.cron, body.prompt);
+      json(res, 201, task);
+    } catch (err: any) {
+      json(res, 400, { error: err.message });
+    }
+  });
+
+  router.post("/api/tasks/:name/run", async (_req, res, params) => {
+    try {
+      await taskManager.executeTask(params!.name);
+      json(res, 200, { ok: true });
+    } catch (err: any) {
+      json(res, 500, { error: err.message });
+    }
+  });
+
+  router.post("/api/tasks/:name/enable", async (_req, res, params) => {
+    try {
+      const task = await taskManager.setTaskEnabled(params!.name, true);
+      if (!task) {
+        json(res, 404, { error: "Task not found" });
+        return;
+      }
+      json(res, 200, task);
+    } catch (err: any) {
+      json(res, 500, { error: err.message });
+    }
+  });
+
+  router.post("/api/tasks/:name/disable", async (_req, res, params) => {
+    try {
+      const task = await taskManager.setTaskEnabled(params!.name, false);
+      if (!task) {
+        json(res, 404, { error: "Task not found" });
+        return;
+      }
+      json(res, 200, task);
+    } catch (err: any) {
+      json(res, 500, { error: err.message });
+    }
+  });
+
+  router.delete("/api/tasks/:name", async (_req, res, params) => {
+    try {
+      await taskManager.deleteTask(params!.name);
+      json(res, 200, { ok: true });
     } catch (err: any) {
       json(res, 500, { error: err.message });
     }
@@ -658,6 +767,7 @@ export async function createPiServer(config: ServerConfig = { port: 8888, host: 
   // Graceful shutdown
   const shutdown = async () => {
     console.log("\nShutting down...");
+    await taskManager.stop();
     await pi.disposeAll();
     httpServer.close();
     process.exit(0);
