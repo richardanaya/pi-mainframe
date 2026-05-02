@@ -1,0 +1,23 @@
+{
+  "name": "diomedes",
+  "version": "0.0.0",
+  "description": "HTTP server that wraps pi coding agent as a library",
+  "author": "Richard Anaya",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "@mariozechner/pi-coding-agent": "latest",
+    "@mariozechner/pi-ai": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.7.0"
+  }
+}

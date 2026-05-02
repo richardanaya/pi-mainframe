@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>diomedes</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <!-- ── Sidebar ── -->
+  <aside id="sidebar">
+    <div id="sidebar-header">
+      <h1>diomedes</h1>
+      <span id="daytona-badge" class="badge hidden">● Daytona</span>
+    </div>
+
+    <div id="thread-list">
+      <!-- threads populated by JS -->
+    </div>
+
+    <div id="sidebar-footer">
+      <button id="btn-new-thread" title="New thread">+ New Thread</button>
+    </div>
+  </aside>
+
+  <!-- ── Main content ── -->
+  <main id="main">
+    <!-- Chat view (hidden until thread selected) -->
+    <div id="chat-view" class="hidden">
+      <div id="chat-header">
+        <div id="thread-meta">
+          <span id="thread-name"></span>
+          <span id="thread-status" class="status-dot"></span>
+        </div>
+        <div id="chat-actions">
+          <button id="btn-compact" title="Compact context">Compact</button>
+          <button id="btn-delete-thread" class="btn-danger" title="Delete thread">Delete</button>
+        </div>
+      </div>
+
+      <div id="messages">
+        <!-- messages populated by JS -->
+      </div>
+
+      <div id="composer">
+        <textarea
+          id="prompt-input"
+          placeholder="Send a message..."
+          rows="2"
+          autofocus
+        ></textarea>
+        <button id="btn-send" title="Send">Send</button>
+      </div>
+    </div>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
