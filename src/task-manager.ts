@@ -10,6 +10,7 @@ import { join } from "node:path";
 import type { PiManager } from "./pi-manager.js";
 import {
   listPiDaytonaSandboxes,
+  startSandbox,
 } from "./daytona-client.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -218,15 +219,18 @@ export class TaskManager {
     const task = await this.loadTask(name);
     if (!task) throw new Error(`Task "${name}" not found`);
 
-    // Unique run name: taskname + ISO timestamp (file-safe)
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const runName = `${name}-${timestamp}`;
+    // Fixed name per task: one sandbox, one session file, forever
+    const runName = `task-${name}`;
     const fullSandboxName = `pi-daytona-${runName}`;
 
-    console.log(`[task-manager] Executing task "${name}" → run "${runName}"...`);
+    console.log(`[task-manager] Executing task "${name}"...`);
 
     try {
-      // 1. Create a session → pi-daytona provisions a new sandbox
+      // 1. Ensure the sandbox exists and is started
+      await this.ensureSandbox(runName, fullSandboxName);
+
+      // 2. Open the persistent session (loads existing history from
+      //    sessions/task-<name>.jsonl so context accumulates across runs)
       const handle = await this.pi.createSession({
         cwd: this.projectCwd,
         label: runName,
@@ -235,22 +239,6 @@ export class TaskManager {
         settings: { autoCompaction: true, autoRetry: true },
         extensionFlags: new Map([["sandbox", runName]]),
       });
-
-      // 2. Poll Daytona until the sandbox is started
-      let started = false;
-      for (let i = 0; i < SANDBOX_POLL_MAX_RETRIES; i++) {
-        await new Promise((r) => setTimeout(r, SANDBOX_POLL_INTERVAL_MS));
-        const list = await listPiDaytonaSandboxes();
-        const sb = list.find((s) => s.name === fullSandboxName);
-        if (sb && sb.state === "started") {
-          started = true;
-          break;
-        }
-      }
-      if (!started) {
-        await this.pi.disposeSession(handle.id).catch(() => {});
-        throw new Error(`Sandbox "${fullSandboxName}" did not start in time`);
-      }
 
       // 3. Send the prompt and wait for the full agent run to complete
       await new Promise<void>((resolve, reject) => {
@@ -269,24 +257,62 @@ export class TaskManager {
         });
       });
 
-      // 4. Record the run
       await this.updateLastRun(name);
-      console.log(`[task-manager] Task "${name}" run "${runName}" completed`);
+      console.log(`[task-manager] Task "${name}" completed`);
     } catch (err: any) {
-      console.error(`[task-manager] Task "${name}" run failed:`, err.message);
+      console.error(`[task-manager] Task "${name}" failed:`, err.message);
       throw err;
     }
   }
 
-  /** Poll until a sandbox reaches the desired state. */
-  private async pollSandbox(sandboxId: string, targetState: string): Promise<void> {
+  /** Ensure a sandbox exists and is started. Creates it if missing. */
+  private async ensureSandbox(runName: string, fullSandboxName: string): Promise<void> {
+    const sandboxes = await listPiDaytonaSandboxes();
+    const sandbox = sandboxes.find((s) => s.name === fullSandboxName);
+
+    if (!sandbox) {
+      // No sandbox yet — create a session to trigger provisioning
+      const handle = await this.pi.createSession({
+        cwd: this.projectCwd,
+        label: runName,
+        tools: "coding",
+        thinkingLevel: "off",
+        settings: { autoCompaction: true, autoRetry: true },
+        extensionFlags: new Map([["sandbox", runName]]),
+      });
+
+      // Poll until the sandbox appears and is started
+      for (let i = 0; i < SANDBOX_POLL_MAX_RETRIES; i++) {
+        await new Promise((r) => setTimeout(r, SANDBOX_POLL_INTERVAL_MS));
+        const list = await listPiDaytonaSandboxes();
+        const found = list.find((s) => s.name === fullSandboxName);
+        if (found && found.state === "started") {
+          await this.pi.disposeSession(handle.id).catch(() => {});
+          return;
+        }
+      }
+
+      await this.pi.disposeSession(handle.id).catch(() => {});
+      throw new Error(`Sandbox "${fullSandboxName}" did not start in time`);
+    }
+
+    if (sandbox.state === "started") {
+      return;
+    }
+
+    if (sandbox.state === "stopped") {
+      await startSandbox(sandbox.id);
+    }
+
+    // Poll until started
     for (let i = 0; i < SANDBOX_POLL_MAX_RETRIES; i++) {
       await new Promise((r) => setTimeout(r, SANDBOX_POLL_INTERVAL_MS));
       const list = await listPiDaytonaSandboxes();
-      const sb = list.find((s) => s.id === sandboxId);
-      if (sb && sb.state === targetState) return;
+      const sb = list.find((s) => s.id === sandbox.id);
+      if (sb && sb.state === "started") return;
     }
-    throw new Error(`Sandbox "${sandboxId}" did not reach "${targetState}" state`);
+
+    throw new Error(`Sandbox "${fullSandboxName}" did not reach "started" state`);
   }
 
   // ── File I/O ───────────────────────────────────────────────────────────
