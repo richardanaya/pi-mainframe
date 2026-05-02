@@ -9,6 +9,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { join } from "node:path";
 import type { ThinkingLevel, AgentMessage } from "@mariozechner/pi-agent-core";
 import type { ImageContent, Model } from "@mariozechner/pi-ai";
 import {
@@ -192,7 +193,15 @@ export class PiManager {
 
     // --- Session manager ---
     let sessionManager: SessionManager;
-    if (options.continueRecent) {
+    const sandboxFlag = options.extensionFlags?.get("sandbox");
+    const sandboxName = typeof sandboxFlag === "string" && sandboxFlag.length > 0 ? sandboxFlag : undefined;
+
+    if (sandboxName) {
+      // Persist sandbox sessions to sessions/<sandboxName>.jsonl
+      const sessionsDir = join(cwd, "sessions");
+      const sessionFile = join(sessionsDir, `${sandboxName}.jsonl`);
+      sessionManager = SessionManager.open(sessionFile, sessionsDir, cwd);
+    } else if (options.continueRecent) {
       sessionManager = SessionManager.continueRecent(cwd);
     } else {
       sessionManager = SessionManager.inMemory(cwd);
