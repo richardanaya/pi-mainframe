@@ -1,4 +1,4 @@
-# diomedes
+# pi-daytona-ux
 
 HTTP/SSE server wrapping [pi coding agent](https://github.com/mariozechner/pi-coding-agent) as a library, with optional [pi-daytona](https://github.com/richardanaya/pi-daytona) sandbox integration.
 

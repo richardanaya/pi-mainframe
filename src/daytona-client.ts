@@ -89,7 +89,7 @@ function authHeaders(): Record<string, string> {
   return {
     "Authorization": `Bearer ${apiKey}`,
     "Content-Type": "application/json",
-    "X-Daytona-Source": "diomedes",
+    "X-Daytona-Source": "pi-daytona-ux",
   };
 }
 

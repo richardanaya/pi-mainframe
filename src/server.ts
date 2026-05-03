@@ -1,5 +1,5 @@
 /**
- * diomedes — HTTP/SSE server wrapping pi coding agent as a library.
+ * pi-daytona-ux — HTTP/SSE server wrapping pi coding agent as a library.
  *
  * Serves the web UI from public/ and exposes:
  *   POST   /api/sessions              Create a new agent session
@@ -807,7 +807,7 @@ export async function createPiServer(config: ServerConfig = { port: 8888, host: 
 
   await new Promise<void>((resolve) => httpServer.listen(port, host, resolve));
 
-  console.log(`🏖️  diomedes server listening on http://${host}:${port}`);
+  console.log(`🏖️  pi-daytona-ux server listening on http://${host}:${port}`);
   console.log(`   daytona extension: ${daytonaPath}`);
 
   // Graceful shutdown
