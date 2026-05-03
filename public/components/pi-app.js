@@ -380,7 +380,7 @@ export class PiApp extends LitElement {
     this._messages = [...this._messages, { role: 'user', content: message }];
 
     let assistantText = '';
-    let hasAssistantBubble = false;
+    let assistantMsgIndex = -1;  // track index so tool messages don't shift it
 
     try {
       const res = await API.promptStream(this._activeSession.sessionId, message);
@@ -406,14 +406,13 @@ export class PiApp extends LitElement {
             if (eventType === 'message-update') {
               const delta = data.assistantMessageEvent?.delta || '';
               if (delta) {
-                if (!hasAssistantBubble) {
+                if (assistantMsgIndex === -1) {
                   this._messages = [...this._messages, { role: 'assistant', content: '' }];
-                  hasAssistantBubble = true;
+                  assistantMsgIndex = this._messages.length - 1;
                 }
                 assistantText += delta;
-                // Update the last message in-place
                 const msgs = [...this._messages];
-                msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: assistantText };
+                msgs[assistantMsgIndex] = { ...msgs[assistantMsgIndex], content: assistantText };
                 this._messages = msgs;
               }
             } else if (eventType === 'tool-start') {
