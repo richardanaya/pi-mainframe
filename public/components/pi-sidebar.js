@@ -184,6 +184,11 @@ export class PiSidebar extends LitElement {
       border-top: var(--border-size-1, 1px) solid rgba(0,0,0,0.08);
     }
 
+    .sidebar-footer thx-button {
+      width: 100%;
+      display: block;
+    }
+
     .empty {
       padding: var(--size-4, 16px);
       color: var(--neutral-600, #666);
