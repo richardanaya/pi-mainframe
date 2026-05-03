@@ -62,6 +62,20 @@ export class PiChatView extends LitElement {
       --neutral-100: rgba(166,200,225,0.15);
     }
 
+    /* ── Message actions ──────────── */
+    .message-actions {
+      display: flex;
+      gap: var(--size-1, 4px);
+      align-items: center;
+      opacity: 0;
+      transition: opacity var(--duration-quick-2, 0.15s);
+      padding-left: 2px;
+    }
+    .message:hover .message-actions,
+    .message-actions:focus-within {
+      opacity: 1;
+    }
+
     /* ── Tool messages ────────────── */
     .tool-details {
       --details-open-border: var(--atmos-primary, #a6c8e1);
@@ -149,6 +163,8 @@ export class PiChatView extends LitElement {
     this.visible = false;
     this._messagesRef = createRef();
     this._textareaRef = createRef();
+    this._audio = null;
+    this._playingContent = null;
   }
 
   updated(changed) {
@@ -246,12 +262,100 @@ export class PiChatView extends LitElement {
     }
 
     const roleLabel = msg.role === 'user' ? 'YOU' : 'PI';
+    const isPlaying = this._playingContent === msg.content;
 
     return html`
       <div class="message ${msg.role}">
         <span class="message-role">${roleLabel}</span>
         <thx-card>${msg.content}</thx-card>
+        ${msg.role === 'assistant' ? html`
+          <div class="message-actions">
+            <thx-icon-button
+              size="sm"
+              variant="ghost"
+              label="Copy"
+              @click=${() => this._copyText(msg.content)}>
+              <thx-icon name="copy" size="sm" color="secondary"></thx-icon>
+            </thx-icon-button>
+            <thx-icon-button
+              size="sm"
+              variant="ghost"
+              label=${isPlaying ? 'Stop' : 'Listen'}
+              ?pulse=${isPlaying}
+              @click=${() => this._toggleTTS(msg.content)}>
+              <thx-icon name=${isPlaying ? 'close' : 'volumeUp'} size="sm" color=${isPlaying ? 'primary' : 'secondary'}></thx-icon>
+            </thx-icon-button>
+          </div>
+        ` : ''}
       </div>`;
+  }
+
+  _copyText(text) {
+    navigator.clipboard.writeText(text).catch(() => {});
+  }
+
+  async _toggleTTS(text) {
+    // Stop if already playing this message
+    if (this._playingContent === text && this._audio) {
+      this._audio.pause();
+      this._audio = null;
+      this._playingContent = null;
+      this.requestUpdate();
+      return;
+    }
+
+    // Stop any other playing audio first
+    if (this._audio) {
+      this._audio.pause();
+      this._audio = null;
+      this._playingContent = null;
+    }
+
+    try {
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        console.error('TTS error:', err.error || response.statusText);
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        if (this._audio === audio) {
+          this._audio = null;
+          this._playingContent = null;
+          this.requestUpdate();
+        }
+      };
+
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        if (this._audio === audio) {
+          this._audio = null;
+          this._playingContent = null;
+          this.requestUpdate();
+        }
+      };
+
+      this._audio = audio;
+      this._playingContent = text;
+      this.requestUpdate();
+      await audio.play();
+    } catch (err) {
+      console.error('TTS playback failed:', err);
+      this._audio = null;
+      this._playingContent = null;
+      this.requestUpdate();
+    }
   }
 }
 

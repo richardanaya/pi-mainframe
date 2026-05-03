@@ -18,10 +18,12 @@
  *   GET    /api/health                Health check
  *   GET    /api/sandboxes             List pi-daytona sandboxes (threads)
  *   DELETE /api/sandboxes/:id         Delete a sandbox
+ *   POST   /api/tts                   Generate speech audio (xAI TTS)
  */
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { join, dirname } from "node:path";
+import { homedir } from "node:os";
 import { readFile, stat, unlink } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -712,6 +714,73 @@ export async function createPiServer(config: ServerConfig = { port: 8888, host: 
       json(res, 200, { ok: true });
     } catch (err: any) {
       json(res, 500, { error: err.message });
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // TTS — text to speech via xAI
+  // -----------------------------------------------------------------------
+
+  const TTS_CONFIG_PATH = join(homedir(), ".pi", "xai-tts.json");
+
+  router.post("/api/tts", async (req, res) => {
+    try {
+      const { text } = await parseBody<any>(req);
+      if (!text?.trim()) {
+        json(res, 400, { error: "text is required" });
+        return;
+      }
+
+      let config: any = {};
+      try {
+        const raw = await readFile(TTS_CONFIG_PATH, "utf-8");
+        config = JSON.parse(raw);
+      } catch {
+        json(res, 500, { error: "TTS not configured — missing ~/.pi/xai-tts.json" });
+        return;
+      }
+
+      if (!config.xaiApiKey) {
+        json(res, 500, { error: "Missing xaiApiKey in ~/.pi/xai-tts.json" });
+        return;
+      }
+
+      const MAX_CHARS = 15000;
+      const textToSpeak = text.length > MAX_CHARS ? text.slice(0, MAX_CHARS) : text;
+
+      const response = await fetch("https://api.x.ai/v1/tts", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${config.xaiApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: textToSpeak,
+          voice_id: config.voice || "leo",
+          language: config.language || "en",
+          output_format: {
+            codec: "mp3",
+            sample_rate: 24000,
+            bit_rate: 128000,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        json(res, 502, { error: `xAI TTS error: ${response.status} ${errorText}` });
+        return;
+      }
+
+      const audioBuffer = await response.arrayBuffer();
+      res.writeHead(200, {
+        "Content-Type": "audio/mpeg",
+        "Content-Length": audioBuffer.byteLength,
+        "Access-Control-Allow-Origin": "*",
+      });
+      res.end(Buffer.from(audioBuffer));
+    } catch (err: any) {
+      json(res, 500, { error: err.message ?? "TTS generation failed" });
     }
   });
 
