@@ -2,7 +2,7 @@
 
 HTTP/SSE server wrapping [pi coding agent](https://github.com/mariozechner/pi-coding-agent) as a library, with a web UI, [pi-daytona](https://github.com/richardanaya/pi-daytona) sandbox integration, and xAI TTS support.
 
-<img width="1724" height="1214" alt="image" src="https://github.com/user-attachments/assets/c5615f10-82a9-439e-b442-8b27c9e507bc" />
+<img width="2878" height="1604" alt="image" src="https://github.com/user-attachments/assets/37170142-05bf-491b-b368-d61cf441a46a" />
 
 ## Features
 
