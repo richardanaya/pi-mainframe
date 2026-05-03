@@ -304,16 +304,7 @@ export class PiApp extends LitElement {
 
       // Load existing messages
       const msgData = await API.fetchMessages(session.id);
-      const msgs = [];
-      for (const msg of msgData.messages || []) {
-        const text = API.extractMessageText(msg);
-        if (msg.role === 'user') {
-          msgs.push({ role: 'user', content: text || JSON.stringify(msg.content) });
-        } else if (msg.role === 'assistant') {
-          msgs.push({ role: 'assistant', content: text });
-        }
-      }
-      this._messages = msgs;
+      this._messages = this._processHistoryMessages(msgData.messages);
       this._addSystemMsg(`Connected to sandbox — ${displayName}`);
     } catch (err) {
       this._addSystemMsg(`Session error: ${err.message}`, true);
@@ -328,20 +319,45 @@ export class PiApp extends LitElement {
     this._messages = [...this._messages, { role: 'system', content: text, isError }];
   }
 
+  /** Convert raw API messages to UI message objects, handling all roles. */
+  _processHistoryMessages(rawMessages) {
+    const msgs = [];
+    for (const msg of rawMessages || []) {
+      if (msg.role === 'user') {
+        const text = API.extractMessageText(msg);
+        msgs.push({ role: 'user', content: text || JSON.stringify(msg.content) });
+      } else if (msg.role === 'assistant') {
+        // Assistant content may include thinking, text, and toolCall blocks
+        const content = msg.content;
+        if (Array.isArray(content)) {
+          for (const block of content) {
+            if (block.type === 'toolCall') {
+              msgs.push({ role: 'tool', content: `🔧 ${block.name}` });
+            } else if (block.type === 'text') {
+              const text = (block.text || '').trim();
+              if (text) msgs.push({ role: 'assistant', content: text });
+            }
+            // Skip thinking blocks — they're internal reasoning
+          }
+        } else {
+          const text = API.extractMessageText(msg);
+          if (text) msgs.push({ role: 'assistant', content: text });
+        }
+      } else if (msg.role === 'toolResult') {
+        const toolName = msg.toolName || 'unknown';
+        const isError = msg.isError;
+        const prefix = isError ? '❌' : '✓';
+        msgs.push({ role: 'tool', content: `${prefix} ${toolName}`, isError });
+      }
+    }
+    return msgs;
+  }
+
   async _reloadMessages() {
     if (!this._activeSession) return;
     try {
       const msgData = await API.fetchMessages(this._activeSession.sessionId);
-      const msgs = [];
-      for (const msg of msgData.messages || []) {
-        const text = API.extractMessageText(msg);
-        if (msg.role === 'user') {
-          msgs.push({ role: 'user', content: text || JSON.stringify(msg.content) });
-        } else if (msg.role === 'assistant') {
-          msgs.push({ role: 'assistant', content: text });
-        }
-      }
-      this._messages = msgs;
+      this._messages = this._processHistoryMessages(msgData.messages);
     } catch (err) {
       console.error('Failed to reload messages:', err);
     }
