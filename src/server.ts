@@ -21,7 +21,6 @@
  */
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { readFile, stat, unlink } from "node:fs/promises";
 import { existsSync } from "node:fs";
@@ -50,8 +49,6 @@ const PUBLIC_DIR = join(__dirname, "..", "public");
 interface ServerConfig {
   port: number;
   host: string;
-  /** Path to pi-daytona extension index (loaded when sandbox is configured) */
-  daytonaExtensionPath?: string;
   /** Default model provider */
   defaultProvider?: string;
   /** Default model id */
@@ -168,11 +165,6 @@ export async function createPiServer(config: ServerConfig = { port: 8888, host: 
   const port = config.port ?? 8888;
   const host = config.host ?? "127.0.0.1";
 
-  // Resolve pi-daytona extension path
-  const daytonaPath =
-    config.daytonaExtensionPath ??
-    join(homedir(), ".pi", "extensions", "pi-daytona", "index.ts");
-
   // PiManager reads default provider/model from ~/.pi/agent/settings.json,
   // overridable via env vars PI_DEFAULT_PROVIDER / PI_DEFAULT_MODEL
   const pi = new PiManager({
@@ -256,7 +248,6 @@ export async function createPiServer(config: ServerConfig = { port: 8888, host: 
       modelId: body.modelId,
       thinkingLevel: body.thinkingLevel ?? "off",
       label: body.label,
-      tools: body.tools ?? "coding",
       systemPrompt: body.systemPrompt,
       settings: settings,
       extensionFlags,
@@ -808,7 +799,6 @@ export async function createPiServer(config: ServerConfig = { port: 8888, host: 
   await new Promise<void>((resolve) => httpServer.listen(port, host, resolve));
 
   console.log(`🏖️  pi-daytona-ux server listening on http://${host}:${port}`);
-  console.log(`   daytona extension: ${daytonaPath}`);
 
   // Graceful shutdown
   const shutdown = async () => {
@@ -887,7 +877,6 @@ export async function main() {
   const { shutdown } = await createPiServer({
     port,
     host,
-    daytonaExtensionPath: process.env.DAYTONA_EXTENSION_PATH,
     defaultProvider: process.env.PI_DEFAULT_PROVIDER,
     defaultModelId: process.env.PI_DEFAULT_MODEL,
   });

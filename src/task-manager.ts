@@ -263,7 +263,6 @@ export class TaskManager {
       const handle = await this.pi.createSession({
         cwd: this.projectCwd,
         label: runName,
-        tools: "coding",
         thinkingLevel: "off",
         settings: { autoCompaction: true, autoRetry: true },
         extensionFlags: new Map([["sandbox", runName]]),
@@ -307,7 +306,6 @@ export class TaskManager {
       const handle = await this.pi.createSession({
         cwd: this.projectCwd,
         label: runName,
-        tools: "coding",
         thinkingLevel: "off",
         settings: { autoCompaction: true, autoRetry: true },
         extensionFlags: new Map([["sandbox", runName]]),

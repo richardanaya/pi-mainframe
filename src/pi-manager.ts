@@ -60,8 +60,6 @@ export interface CreateSessionOptions {
   thinkingLevel?: ThinkingLevel;
   /** Session label */
   label?: string;
-  /** Tools to enable (default: "coding") */
-  tools?: "coding" | "readonly" | "all" | string[];
   /** System prompt override */
   systemPrompt?: string;
   /** Continue most recent session? */
@@ -221,10 +219,10 @@ export class PiManager {
       );
     }
 
-    // --- Resolve tools ---
-    const tools = this.resolveTools(options.tools ?? "coding");
-
     // --- Create session ---
+    // Don't pass `tools` — an allowlist blocks extension tools from registering.
+    // Don't call setActiveToolsByName — that overrides what pi loaded from extensions.
+    // Let pi use its defaults: base tools + all extension-discovered tools.
     const { session } = await createAgentSession({
       cwd,
       agentDir: this.agentDir,
@@ -232,7 +230,6 @@ export class PiManager {
       thinkingLevel: options.thinkingLevel ?? "off",
       authStorage: this.authStorage,
       modelRegistry: this.modelRegistry,
-      tools,
       resourceLoader: loader,
       sessionManager,
       settingsManager: settings,
@@ -438,17 +435,5 @@ export class PiManager {
       messageCount: s.messages.length,
       createdAt: handle.createdAt.toISOString(),
     };
-  }
-
-  private resolveTools(tools: "coding" | "readonly" | "all" | string[]): string[] {
-    const all = ["read", "bash", "edit", "write", "grep", "find", "ls"];
-    if (tools === "coding") return ["read", "bash", "edit", "write"];
-    if (tools === "readonly") return ["read", "grep", "find", "ls"];
-    if (tools === "all") return all;
-    // Validate specific tool names
-    for (const t of tools) {
-      if (!all.includes(t)) throw new Error(`Unknown tool: "${t}". Available: ${all.join(", ")}`);
-    }
-    return tools;
   }
 }
