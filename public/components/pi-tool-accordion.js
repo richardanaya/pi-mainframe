@@ -21,6 +21,7 @@ export class PiToolAccordion extends LitElement {
       border: 1px solid var(--border);
       border-radius: var(--radius);
       overflow: hidden;
+      transition: border-color 0.15s;
     }
     .accordion.running { border-left: 3px solid var(--accent); }
     .accordion.success { border-left: 3px solid var(--green); }
@@ -45,12 +46,15 @@ export class PiToolAccordion extends LitElement {
     }
 
     .tool-name {
-      font-weight: 600;
+      font-weight: 500;
+      font-family: var(--font-mono);
+      font-size: 11px;
       color: var(--accent);
       flex: 1;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      letter-spacing: 0.2px;
     }
 
     .chevron {
@@ -74,19 +78,23 @@ export class PiToolAccordion extends LitElement {
       font-weight: 600;
       text-transform: uppercase;
       color: var(--text-muted);
-      margin-bottom: 4px;
-      letter-spacing: 0.5px;
+      margin-bottom: 5px;
+      letter-spacing: 0.8px;
+      font-family: var(--font-sans);
     }
 
     .section-content {
-      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-      font-size: 12px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      font-weight: 400;
+      line-height: 1.6;
       white-space: pre-wrap;
       word-break: break-word;
       color: var(--text-secondary);
-      background: var(--bg-tertiary);
-      padding: 8px;
-      border-radius: 4px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
       margin-bottom: 10px;
       max-height: 300px;
       overflow-y: auto;

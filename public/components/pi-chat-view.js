@@ -39,7 +39,8 @@ export class PiChatView extends LitElement {
     }
     .thread-name {
       font-weight: 600;
-      font-size: 14px;
+      font-size: 13px;
+      letter-spacing: 0.1px;
     }
     .status-dot {
       width: 8px;
@@ -69,7 +70,7 @@ export class PiChatView extends LitElement {
       color: var(--text-primary);
     }
     .btn-danger:hover {
-      background: #f8514933 !important;
+      background: var(--red-muted) !important;
       color: var(--red) !important;
     }
 
@@ -97,20 +98,21 @@ export class PiChatView extends LitElement {
     }
 
     .message-role {
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 600;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.8px;
     }
 
     .message-content {
       padding: 10px 14px;
       border-radius: var(--radius);
-      line-height: 1.6;
+      line-height: 1.65;
       white-space: pre-wrap;
       word-break: break-word;
       font-size: 13px;
+      font-family: var(--font-sans);
     }
 
     .message.user .message-content {
@@ -129,7 +131,7 @@ export class PiChatView extends LitElement {
     .message-tool {
       font-size: 11px;
       color: var(--yellow);
-      background: #d2992233;
+      background: var(--yellow-muted);
       padding: 4px 10px;
       border-radius: 4px;
       display: inline-flex;
@@ -139,7 +141,7 @@ export class PiChatView extends LitElement {
     }
     .message-tool.error {
       color: var(--red);
-      background: #f8514933;
+      background: var(--red-muted);
     }
 
     .streaming-indicator {
@@ -195,9 +197,11 @@ export class PiChatView extends LitElement {
       color: var(--text-primary);
       border-radius: var(--radius);
       padding: 8px 12px;
-      font-family: inherit;
+      font-family: var(--font-sans);
       font-size: 13px;
+      font-weight: 400;
       line-height: 1.5;
+      transition: border-color 0.15s;
     }
     .prompt-input:focus {
       outline: none;
@@ -215,14 +219,15 @@ export class PiChatView extends LitElement {
       width: 60px;
       border: none;
       background: var(--accent);
-      color: #fff;
+      color: #0c1117;
       border-radius: var(--radius);
       cursor: pointer;
       font-size: 13px;
-      font-weight: 500;
-      font-family: inherit;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      transition: background 0.15s;
     }
-    .btn-send:hover { opacity: 0.85; }
+    .btn-send:hover { background: var(--accent-hover); }
     .btn-send:disabled { opacity: 0.4; cursor: not-allowed; }
 
     @keyframes pulse {

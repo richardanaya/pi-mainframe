@@ -31,18 +31,20 @@ export class PiSidebar extends LitElement {
       justify-content: space-between;
     }
     .sidebar-header h1 {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 600;
       color: var(--text-primary);
       margin: 0;
+      letter-spacing: 0.2px;
     }
     .badge {
       font-size: 11px;
-      padding: 2px 8px;
+      padding: 2px 10px;
       border-radius: 99px;
-      background: var(--green);
-      color: #fff;
-      font-weight: 500;
+      background: var(--accent);
+      color: #0c1117;
+      font-weight: 600;
+      letter-spacing: 0.3px;
       white-space: nowrap;
     }
     .badge.hidden { display: none; }
@@ -53,11 +55,12 @@ export class PiSidebar extends LitElement {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.8px;
       color: var(--text-muted);
+      font-family: var(--font-sans);
     }
 
     /* ── Task section ─────────────── */
@@ -175,7 +178,7 @@ export class PiSidebar extends LitElement {
     .task-run:hover { color: var(--accent); background: var(--bg-tertiary); }
     .task-run:disabled { opacity: 0.3; cursor: not-allowed; }
     .task-toggle-btn:hover { color: var(--accent); background: var(--bg-tertiary); }
-    .task-delete:hover { color: var(--red); background: #f8514933; }
+    .task-delete:hover { color: var(--red); background: var(--red-muted); }
 
     /* ── Thread section ───────────── */
     .thread-section {
@@ -225,12 +228,13 @@ export class PiSidebar extends LitElement {
       min-width: 0;
     }
     .thread-name {
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 500;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       color: var(--text-primary);
+      letter-spacing: 0.1px;
     }
     .thread-date {
       font-size: 11px;
