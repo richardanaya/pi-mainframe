@@ -1,6 +1,6 @@
 {
   "name": "pi-mainframe",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "HTTP/SSE server wrapping pi coding agent with a web UI, sandbox support, and TTS",
   "author": "Richard Anaya",
   "license": "MIT",
