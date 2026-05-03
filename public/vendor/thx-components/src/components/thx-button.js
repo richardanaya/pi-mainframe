@@ -30,7 +30,6 @@ export class ThxButton extends LitElement {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 100%;
       font-family: var(--font-mono, 'Courier New', Courier, monospace);
       text-transform: uppercase;
       letter-spacing: var(--font-letterspacing-4);
