@@ -376,11 +376,14 @@ export class PiApp extends LitElement {
     this._isStreaming = true;
     this._inputDisabled = true;
 
-    // Add user message
+    // Add user message immediately
     this._messages = [...this._messages, { role: 'user', content: message }];
 
+    // Track live-streamed turn messages so we can replace them with canonical
+    // data from the turn_end event (which matches the session-file format).
+    let turnStartIndex = this._messages.length;
+    let assistantMsgIndex = -1;
     let assistantText = '';
-    let assistantMsgIndex = -1;  // track index so tool messages don't shift it
 
     try {
       const res = await API.promptStream(this._activeSession.sessionId, message);
@@ -404,8 +407,12 @@ export class PiApp extends LitElement {
             const data = JSON.parse(line.slice(6));
 
             if (eventType === 'message-update') {
-              const delta = data.assistantMessageEvent?.delta || '';
-              if (delta) {
+              const ev = data.assistantMessageEvent || {};
+              const subtype = ev.type || '';
+
+              if (subtype === 'text_start' || subtype === 'text_delta') {
+                // Live-stream text into a temporary assistant bubble
+                const delta = ev.delta || '';
                 if (assistantMsgIndex === -1) {
                   this._messages = [...this._messages, { role: 'assistant', content: '' }];
                   assistantMsgIndex = this._messages.length - 1;
@@ -414,13 +421,42 @@ export class PiApp extends LitElement {
                 const msgs = [...this._messages];
                 msgs[assistantMsgIndex] = { ...msgs[assistantMsgIndex], content: assistantText };
                 this._messages = msgs;
+              } else if (subtype === 'toolcall_end') {
+                // Show tool call indicator in live stream
+                const tc = ev.toolCall;
+                if (tc?.name) {
+                  this._messages = [...this._messages, { role: 'tool', content: `🔧 ${tc.name}` }];
+                }
               }
+              // toolcall_start / toolcall_delta: ignore, we'll get canonical
+              // data from turn_end
+
             } else if (eventType === 'tool-start') {
-              this._addSystemMsg(`🔧 ${data.toolName}`);
+              this._messages = [...this._messages, { role: 'tool', content: `🔧 ${data.toolName}` }];
             } else if (eventType === 'tool-end') {
               if (data.isError) {
-                this._addSystemMsg(`❌ ${data.toolName} error`, true);
+                this._messages = [...this._messages, { role: 'tool', content: `❌ ${data.toolName} error`, isError: true }];
               }
+            } else if (eventType === 'turn-end') {
+              // Canonical data — replace live-streamed turn messages
+              const assistantMsg = data.message;
+              const toolResults = data.toolResults || [];
+
+              // Build canonical messages for this turn (same format as session file)
+              const raw = [assistantMsg, ...toolResults];
+              const canonical = this._processHistoryMessages(raw);
+
+              // Replace live-streamed turn messages with canonical data
+              this._messages = [
+                ...this._messages.slice(0, turnStartIndex),
+                ...canonical,
+              ];
+
+              // Reset for next turn
+              turnStartIndex = this._messages.length;
+              assistantMsgIndex = -1;
+              assistantText = '';
+
             } else if (eventType === 'error') {
               this._addSystemMsg(data.error, true);
             }
