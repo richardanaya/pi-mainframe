@@ -15,6 +15,9 @@ export class PiApp extends LitElement {
     _threadStatus: { state: true },
     _threadName: { state: true },
     _inputDisabled: { state: true },
+    _dialogOpen: { state: true },
+    _dialogType: { state: true },
+    _dialogData: { state: true },
   };
 
   static styles = css`
@@ -57,6 +60,9 @@ export class PiApp extends LitElement {
     this._threadStatus = '';
     this._threadName = '';
     this._inputDisabled = false;
+    this._dialogOpen = false;
+    this._dialogType = '';
+    this._dialogData = null;
 
     // Non-reactive internal state
     this._taskEventSource = null;
@@ -201,7 +207,15 @@ export class PiApp extends LitElement {
 
   async _deleteThread(tid) {
     const thread = this._threads.find((t) => t.id === tid);
-    if (!confirm(`Delete thread "${API.stripPrefix(thread?.name)}"?`)) return;
+    this._dialogType = 'confirmDeleteThread';
+    this._dialogData = { threadId: tid, threadName: API.stripPrefix(thread?.name) };
+    this._dialogOpen = true;
+  }
+
+  async _confirmDeleteThread() {
+    const tid = this._dialogData?.threadId;
+    this._closeDialog();
+    if (!tid) return;
 
     // Optimistic removal
     this._threads = this._threads.filter((t) => t.id !== tid);
@@ -606,7 +620,15 @@ export class PiApp extends LitElement {
   }
 
   async _deleteTask(name) {
-    if (!confirm(`Delete task "${name}"?`)) return;
+    this._dialogType = 'confirmDeleteTask';
+    this._dialogData = { taskName: name };
+    this._dialogOpen = true;
+  }
+
+  async _confirmDeleteTask() {
+    const name = this._dialogData?.taskName;
+    this._closeDialog();
+    if (!name) return;
     try {
       await API.deleteTask(name);
       await this._loadTasks();
@@ -623,25 +645,124 @@ export class PiApp extends LitElement {
   _onDeleteThread(e) { this._deleteThread(e.detail.threadId); }
 
   _onCreateThread() {
-    const name = prompt('Thread name (or leave empty for auto-name):');
-    if (name !== null) this._createThread(name || undefined);
+    this._dialogType = 'createThread';
+    this._dialogData = { name: '' };
+    this._dialogOpen = true;
+  }
+
+  _submitCreateThread() {
+    const name = this._dialogData?.name ?? '';
+    this._closeDialog();
+    this._createThread(name || undefined);
   }
 
   _onSendPrompt(e) { this._sendPrompt(e.detail.message); }
 
   _onCreateTask() {
-    const name = prompt('Task name:');
-    if (!name) return;
-    const cron = prompt('Cron expression (e.g. 0 9 * * * for daily at 9am):');
-    if (!cron) return;
-    const promptText = prompt('Prompt to send:');
-    if (!promptText) return;
-    this._createTask(name, cron, promptText);
+    this._dialogType = 'createTask';
+    this._dialogData = { name: '', cron: '', prompt: '' };
+    this._dialogOpen = true;
+  }
+
+  _submitCreateTask() {
+    const { name, cron, prompt } = this._dialogData || {};
+    this._closeDialog();
+    if (!name || !cron || !prompt) return;
+    this._createTask(name, cron, prompt);
+  }
+
+  _closeDialog() {
+    this._dialogOpen = false;
+    this._dialogType = '';
+    this._dialogData = null;
   }
 
   _onRunTask(e) { this._runTask(e.detail.name); }
   _onToggleTask(e) { this._toggleTask(e.detail.name); }
   _onDeleteTask(e) { this._deleteTask(e.detail.name); }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Dialog render helpers
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  _renderDialog() {
+    if (!this._dialogOpen) return '';
+
+    if (this._dialogType === 'createThread') {
+      return html`
+        <thx-dialog .open=${true} header-label="NEW THREAD" size="sm" @toggle=${this._closeDialog}>
+          <div style="display:flex;flex-direction:column;gap:var(--size-3,12px);">
+            <thx-input
+              placeholder="THREAD NAME (OR LEAVE EMPTY)"
+              .value=${this._dialogData?.name || ''}
+              @input=${(e) => { this._dialogData = { ...this._dialogData, name: e.target.value }; }}
+              @keydown=${(e) => { if (e.key === 'Enter') this._submitCreateThread(); }}
+            ></thx-input>
+          </div>
+          <div slot="footer">
+            <thx-button variant="ghost" @click=${this._closeDialog}>CANCEL</thx-button>
+            <thx-button variant="primary" @click=${this._submitCreateThread}>CREATE</thx-button>
+          </div>
+        </thx-dialog>
+      `;
+    }
+
+    if (this._dialogType === 'createTask') {
+      return html`
+        <thx-dialog .open=${true} header-label="NEW TASK" size="md" @toggle=${this._closeDialog}>
+          <div style="display:flex;flex-direction:column;gap:var(--size-3,12px);">
+            <thx-input
+              placeholder="TASK NAME"
+              .value=${this._dialogData?.name || ''}
+              @input=${(e) => { this._dialogData = { ...this._dialogData, name: e.target.value }; }}
+            ></thx-input>
+            <thx-input
+              placeholder="CRON EXPRESSION (E.G. 0 9 * * *)"
+              .value=${this._dialogData?.cron || ''}
+              @input=${(e) => { this._dialogData = { ...this._dialogData, cron: e.target.value }; }}
+            ></thx-input>
+            <thx-textarea
+              placeholder="PROMPT TO SEND"
+              rows="3"
+              resize="none"
+              .value=${this._dialogData?.prompt || ''}
+              @input=${(e) => { this._dialogData = { ...this._dialogData, prompt: e.target.value }; }}
+            ></thx-textarea>
+          </div>
+          <div slot="footer">
+            <thx-button variant="ghost" @click=${this._closeDialog}>CANCEL</thx-button>
+            <thx-button variant="primary" @click=${this._submitCreateTask}>CREATE</thx-button>
+          </div>
+        </thx-dialog>
+      `;
+    }
+
+    if (this._dialogType === 'confirmDeleteThread') {
+      return html`
+        <thx-dialog .open=${true} header-label="CONFIRM DELETION" size="sm" @toggle=${this._closeDialog}>
+          <p>DELETE THREAD "${this._dialogData?.threadName}"?</p>
+          <div slot="footer">
+            <thx-button variant="ghost" @click=${this._closeDialog}>CANCEL</thx-button>
+            <thx-button variant="error" @click=${this._confirmDeleteThread}>DELETE</thx-button>
+          </div>
+        </thx-dialog>
+      `;
+    }
+
+    if (this._dialogType === 'confirmDeleteTask') {
+      return html`
+        <thx-dialog .open=${true} header-label="CONFIRM DELETION" size="sm" @toggle=${this._closeDialog}>
+          <p>DELETE TASK "${this._dialogData?.taskName}"?</p>
+          <div slot="footer">
+            <thx-button variant="ghost" @click=${this._closeDialog}>CANCEL</thx-button>
+            <thx-button variant="error" @click=${this._confirmDeleteTask}>DELETE</thx-button>
+          </div>
+        </thx-dialog>
+      `;
+    }
+
+    return '';
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Render
@@ -679,6 +800,8 @@ export class PiApp extends LitElement {
           : html`<div class="empty-state">Select a thread</div>`
         }
       </main>
+
+      ${this._renderDialog()}
     `;
   }
 }
