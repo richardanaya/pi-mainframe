@@ -26,6 +26,23 @@ export class ThxButton extends LitElement {
       display: inline-block;
     }
 
+    :host([block]) {
+      display: block;
+    }
+
+    :host([block]) button {
+      width: 100%;
+    }
+
+    :host([stretch]) {
+      display: flex;
+      height: 100%;
+    }
+
+    :host([stretch]) button {
+      height: 100%;
+    }
+
     button {
       display: inline-flex;
       align-items: center;
@@ -210,6 +227,10 @@ export class ThxButton extends LitElement {
     type: { type: String },
     /** When true, adjusts styling for use in button groups */
     grouped: { type: Boolean, reflect: true },
+    /** When true, makes the button fill its container width */
+    block: { type: Boolean, reflect: true },
+    /** When true, makes the button fill its container height */
+    stretch: { type: Boolean, reflect: true },
   };
 
   constructor() {
@@ -226,6 +247,10 @@ export class ThxButton extends LitElement {
     this.type = 'button';
     /** @type {boolean} */
     this.grouped = false;
+    /** @type {boolean} */
+    this.block = false;
+    /** @type {boolean} */
+    this.stretch = false;
   }
 
   /**

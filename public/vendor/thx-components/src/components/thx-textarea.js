@@ -38,6 +38,18 @@ export class ThxTextarea extends LitElement {
       display: block;
     }
 
+    :host([stretch]) {
+      height: 100%;
+    }
+
+    :host([stretch]) .textarea-wrapper {
+      height: 100%;
+    }
+
+    :host([stretch]) textarea {
+      height: 100%;
+    }
+
     .textarea-wrapper {
       display: flex;
       flex-direction: column;
@@ -163,6 +175,7 @@ export class ThxTextarea extends LitElement {
     resize: { type: String },
     errorMessage: { type: String },
     showCharCount: { type: Boolean },
+    stretch: { type: Boolean, reflect: true },
   };
 
   constructor() {

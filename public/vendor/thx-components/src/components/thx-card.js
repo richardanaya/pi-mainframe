@@ -58,6 +58,10 @@ export class ThxCard extends LitElement {
 
     .card__content {
       position: relative;
+      font-family: var(--font-mono, 'Courier New', Courier, monospace);
+      font-size: var(--font-size-1);
+      line-height: var(--font-lineheight-4, 1.6);
+      color: var(--neutral-800, #333);
     }
 
     .card--hoverable {

@@ -23,7 +23,7 @@ export class ThxDetails extends LitElement {
     }
 
     :host([open]) {
-      border-left-color: var(--atmos-primary, #a6c8e1);
+      border-left-color: var(--details-open-border, var(--atmos-primary, #a6c8e1));
       background: rgba(166, 200, 225, 0.03);
     }
 

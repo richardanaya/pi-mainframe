@@ -621,7 +621,6 @@ export class PiApp extends LitElement {
 
   _onSelectThread(e) { this._selectThread(e.detail.threadId); }
   _onDeleteThread(e) { this._deleteThread(e.detail.threadId); }
-  _onDeleteCurrentThread() { if (this._selectedThreadId) this._deleteThread(this._selectedThreadId); }
 
   _onCreateThread() {
     const name = prompt('Thread name (or leave empty for auto-name):');
@@ -675,7 +674,6 @@ export class PiApp extends LitElement {
                 .inputDisabled=${this._inputDisabled}
                 .visible=${true}
                 @send-prompt=${this._onSendPrompt}
-                @delete-current-thread=${this._onDeleteCurrentThread}
               ></pi-chat-view>
             `
           : html`<div class="empty-state">Select a thread</div>`

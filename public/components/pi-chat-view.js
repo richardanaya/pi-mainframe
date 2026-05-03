@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { ref, createRef } from 'lit/directives/ref.js';
-import './pi-tool-accordion.js';
+
 
 export class PiChatView extends LitElement {
   static properties = {
@@ -20,30 +20,6 @@ export class PiChatView extends LitElement {
       height: 100%;
       overflow: hidden;
       background: var(--neutral-100, #fafafa);
-    }
-
-    /* ── Header ───────────────────── */
-    .chat-header {
-      min-height: 48px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 var(--size-4, 16px);
-      border-bottom: var(--border-size-1, 1px) solid rgba(0,0,0,0.08);
-      background: var(--neutral-100, #fafafa);
-    }
-    .thread-meta {
-      display: flex;
-      align-items: center;
-      gap: var(--size-2, 8px);
-    }
-    .thread-name {
-      font-family: var(--font-mono, monospace);
-      font-size: var(--font-size-0, 13px);
-      font-weight: var(--font-weight-6, 600);
-      text-transform: uppercase;
-      letter-spacing: var(--font-letterspacing-3, 1.5px);
-      color: var(--neutral-800, #333);
     }
 
     /* ── Messages ─────────────────── */
@@ -78,25 +54,61 @@ export class PiChatView extends LitElement {
       letter-spacing: var(--font-letterspacing-4, 2px);
     }
 
-    .message-content {
-      padding: var(--size-2, 8px) var(--size-3, 12px);
-      line-height: var(--font-lineheight-4, 1.6);
+    .message thx-card {
+      --neutral-100: #fafafa;
+    }
+
+    .message.user thx-card {
+      --neutral-100: rgba(166,200,225,0.15);
+    }
+
+    /* ── Tool messages ────────────── */
+    .tool-details {
+      --details-open-border: var(--atmos-primary, #a6c8e1);
+    }
+    .tool-details.success {
+      --details-open-border: rgba(166,200,225,0.5);
+    }
+    .tool-details.error {
+      --details-open-border: var(--accent-error, #d44000);
+    }
+
+    .tool-summary {
+      display: flex;
+      align-items: center;
+      gap: var(--size-2, 8px);
+      width: 100%;
+    }
+    .tool-name {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tool-section-label {
+      font-family: var(--font-mono, monospace);
+      font-size: var(--font-size-00, 9px);
+      font-weight: var(--font-weight-6, 600);
+      text-transform: uppercase;
+      letter-spacing: var(--font-letterspacing-4, 2px);
+      color: var(--neutral-600, #666);
+      margin: var(--size-2, 8px) 0 var(--size-1, 4px);
+    }
+    .tool-section-label:first-child { margin-top: 0; }
+
+    .tool-section-content {
+      font-family: var(--font-mono, monospace);
+      font-size: var(--font-size-00, 10px);
       white-space: pre-wrap;
       word-break: break-word;
-      font-family: var(--font-body, sans-serif);
-      font-size: var(--font-size-1, 14px);
-      color: var(--neutral-800, #333);
-    }
-
-    .message.user .message-content {
-      background: rgba(166,200,225,0.15);
-      border: var(--border-size-1, 1px) solid var(--atmos-primary, #a6c8e1);
-    }
-
-    .message.assistant .message-content {
-      background: var(--neutral-100, #fafafa);
-      border: var(--border-size-1, 1px) solid rgba(0,0,0,0.08);
-      box-shadow: var(--inner-shadow-0);
+      color: var(--neutral-600, #666);
+      background: rgba(0,0,0,0.02);
+      border: var(--border-size-1, 1px) solid rgba(0,0,0,0.06);
+      padding: var(--size-2, 8px) var(--size-3, 12px);
+      max-height: 250px;
+      overflow-y: auto;
+      line-height: var(--font-lineheight-3, 1.5);
     }
 
     /* ── Composer ─────────────────── */
@@ -106,7 +118,7 @@ export class PiChatView extends LitElement {
       background: var(--neutral-100, #fafafa);
       display: flex;
       gap: var(--size-2, 8px);
-      align-items: flex-end;
+      align-items: stretch;
     }
 
     .composer thx-textarea {
@@ -171,29 +183,8 @@ export class PiChatView extends LitElement {
     }));
   }
 
-  _onDeleteThread() {
-    this.dispatchEvent(new CustomEvent('delete-current-thread', {
-      bubbles: true,
-      composed: true,
-    }));
-  }
-
   render() {
     return html`
-      <div class="chat-header">
-        <div class="thread-meta">
-          <span class="thread-name">${this.threadName}</span>
-          ${this.isStreaming
-            ? html`<thx-spinner size="sm" variant="crt" spinner-style="dots"></thx-spinner>`
-            : ''}
-        </div>
-        <div class="chat-actions">
-          <thx-button size="sm" variant="ghost" @click=${this._onDeleteThread}>
-            DELETE
-          </thx-button>
-        </div>
-      </div>
-
       <div class="messages" ${ref(this._messagesRef)}>
         ${this.messages.map(msg => this._renderMessage(msg))}
         ${this.isStreaming && !this.messages.some(m => m.role === 'assistant')
@@ -203,6 +194,7 @@ export class PiChatView extends LitElement {
 
       <div class="composer">
         <thx-textarea
+          stretch
           placeholder="SEND A MESSAGE..."
           rows="2"
           resize="none"
@@ -210,6 +202,7 @@ export class PiChatView extends LitElement {
           @keydown=${(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this._onSend(); } }}
         ></thx-textarea>
         <thx-button
+          stretch
           variant="primary"
           ?disabled=${this.inputDisabled || this.isStreaming}
           @click=${this._onSend}>
@@ -221,13 +214,28 @@ export class PiChatView extends LitElement {
 
   _renderMessage(msg) {
     if (msg.role === 'tool') {
+      const status = msg.status || 'success';
+      const statusVariant = status === 'running' ? 'pulse'
+        : status === 'error' ? 'error' : 'success';
+      const statusLabel = status === 'running' ? 'EXEC'
+        : status === 'error' ? 'FAIL' : 'OK';
+      const req = msg.request && Object.keys(msg.request).length > 0
+        ? JSON.stringify(msg.request, null, 2)
+        : '{}';
       return html`
-        <pi-tool-accordion
-          .toolName=${msg.toolName || 'unknown'}
-          .status=${msg.status || 'success'}
-          .request=${msg.request || {}}
-          .response=${msg.response || ''}
-        ></pi-tool-accordion>`;
+        <thx-details class="tool-details ${status}">
+          <div slot="summary" class="tool-summary">
+            <span class="tool-name">${msg.toolName || 'unknown'}</span>
+            <thx-badge variant=${statusVariant}>${statusLabel}</thx-badge>
+          </div>
+          <div class="tool-section-label">REQUEST</div>
+          <div class="tool-section-content">${req}</div>
+          ${status === 'running'
+            ? html`<div class="tool-section-label">RESPONSE</div>
+                   <div class="tool-section-content"><thx-spinner size="sm" variant="crt" spinner-style="dots"></thx-spinner> EXECUTING…</div>`
+            : html`<div class="tool-section-label">RESPONSE</div>
+                   <div class="tool-section-content">${msg.response || '(EMPTY)'}</div>`}
+        </thx-details>`;
     }
 
     if (msg.role === 'system') {
@@ -242,7 +250,7 @@ export class PiChatView extends LitElement {
     return html`
       <div class="message ${msg.role}">
         <span class="message-role">${roleLabel}</span>
-        <div class="message-content">${msg.content}</div>
+        <thx-card>${msg.content}</thx-card>
       </div>`;
   }
 }
