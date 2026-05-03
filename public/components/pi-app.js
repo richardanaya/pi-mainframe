@@ -29,6 +29,7 @@ export class PiApp extends LitElement {
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      background: var(--neutral-100, #fafafa);
     }
 
     .empty-state {
@@ -36,8 +37,11 @@ export class PiApp extends LitElement {
       align-items: center;
       justify-content: center;
       flex: 1;
-      color: var(--text-muted);
-      font-size: 13px;
+      color: var(--neutral-600, #666);
+      font-family: var(--font-mono, monospace);
+      font-size: var(--font-size-0, 12px);
+      text-transform: uppercase;
+      letter-spacing: var(--font-letterspacing-4, 2px);
     }
   `;
 
