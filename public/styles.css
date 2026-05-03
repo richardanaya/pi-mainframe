@@ -175,6 +175,13 @@ body {
   flex: 1;
 }
 
+.task-running {
+  font-size: 10px;
+  color: var(--accent);
+  animation: pulse 1.5s infinite;
+  margin-right: 4px;
+}
+
 .task-cron {
   font-size: 10px;
   color: var(--text-muted);
@@ -203,6 +210,7 @@ body {
 }
 
 .task-run:hover { color: var(--accent); background: var(--bg-tertiary); }
+.task-run:disabled { opacity: 0.3; cursor: not-allowed; }
 .task-toggle:hover { color: var(--accent); background: var(--bg-tertiary); }
 .task-delete:hover { color: var(--red); background: #f8514933; }
 

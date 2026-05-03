@@ -269,16 +269,45 @@ async function deleteThread(tid) {
 
 let taskEventSource = null;
 
+let previousRunningTask = null;
+
 function connectTaskStream() {
   if (taskEventSource) return;
 
   taskEventSource = new EventSource("/api/tasks/listen");
 
-  taskEventSource.addEventListener("tasks", (e) => {
+  taskEventSource.addEventListener("tasks", async (e) => {
     try {
       const data = JSON.parse(e.data);
       tasks = data.tasks || [];
       renderTasks();
+
+      const runningTask = tasks.find((t) => t.running);
+
+      // If a task just started running and we're viewing it, disable input
+      if (runningTask) {
+        const sandboxId = window._taskSandboxMap?.get(runningTask.name);
+        if (sandboxId && selectedThreadId === sandboxId) {
+          $promptInput.disabled = true;
+          $btnSend.disabled = true;
+          if (previousRunningTask !== runningTask.name) {
+            addSystemMessage(`Task "${runningTask.name}" is running…`);
+          }
+        }
+      }
+
+      // If a task just finished running and we're viewing it, reload messages
+      if (previousRunningTask && !runningTask) {
+        const sandboxId = window._taskSandboxMap?.get(previousRunningTask);
+        if (sandboxId && selectedThreadId === sandboxId && activeSession) {
+          $promptInput.disabled = false;
+          $btnSend.disabled = false;
+          addSystemMessage(`Task "${previousRunningTask}" completed — reloading history…`);
+          await reloadMessages();
+        }
+      }
+
+      previousRunningTask = runningTask ? runningTask.name : null;
     } catch (err) {
       console.error("Task stream parse error:", err);
     }
@@ -322,16 +351,19 @@ function renderTasks() {
 
     const enabledClass = t.enabled ? "enabled" : "disabled";
     const lastRun = t.lastRun ? formatDate(t.lastRun) : "never";
+    const runningIndicator = t.running ? '<span class="task-running">● running</span>' : "";
+    const runDisabled = t.running ? "disabled" : "";
 
     el.innerHTML = `
       <div class="task-row">
         <span class="task-state ${enabledClass}"></span>
         <span class="task-name">${escapeHtml(t.name)}</span>
+        ${runningIndicator}
         <span class="task-cron">${escapeHtml(t.cron)}</span>
       </div>
       <div class="task-row task-meta">
         <span>Last: ${lastRun}</span>
-        <button class="task-run" data-task-name="${escapeHtml(t.name)}" title="Run now">▶</button>
+        <button class="task-run" data-task-name="${escapeHtml(t.name)}" title="Run now" ${runDisabled}>▶</button>
         <button class="task-toggle" data-task-name="${escapeHtml(t.name)}" title="${t.enabled ? "Disable" : "Enable"}">
           ${t.enabled ? "⏸" : "▶"}
         </button>
@@ -568,6 +600,24 @@ function setStreamingIndicator(visible) {
 }
 
 // ── SSE Prompting ───────────────────────────────────────────────────────────
+
+async function reloadMessages() {
+  if (!activeSession) return;
+  try {
+    const msgData = await api(`/api/sessions/${activeSession.sessionId}/messages`);
+    $messages.innerHTML = "";
+    for (const msg of msgData.messages || []) {
+      const text = extractMessageText(msg);
+      if (msg.role === "user") {
+        appendMessage("user", text || JSON.stringify(msg.content));
+      } else if (msg.role === "assistant") {
+        appendMessage("assistant", text);
+      }
+    }
+  } catch (err) {
+    console.error("Failed to reload messages:", err);
+  }
+}
 
 async function sendPrompt(message) {
   if (!activeSession) {

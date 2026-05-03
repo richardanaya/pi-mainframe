@@ -32,6 +32,7 @@ export interface TaskState {
   lastRun: string | null;
   enabled: boolean;
   nextRun: string | null;
+  running: boolean;
 }
 
 export type TaskListener = (tasks: TaskState[]) => void;
@@ -49,6 +50,7 @@ export class TaskManager {
   private projectCwd: string;
   private jobs: Map<string, { task: Task; job: any /* cronjob */ }> = new Map();
   private listeners: Set<TaskListener> = new Set();
+  private runningTasks: Set<string> = new Set();
   private pi: PiManager;
 
   constructor(pi: PiManager, cwd: string) {
@@ -122,6 +124,7 @@ export class TaskManager {
         tasks.push({
           ...task,
           nextRun: scheduled ? this.getNextRun(scheduled.job) : null,
+          running: this.runningTasks.has(task.name),
         });
       }
     } catch {
@@ -138,6 +141,7 @@ export class TaskManager {
     return {
       ...task,
       nextRun: scheduled ? this.getNextRun(scheduled.job) : null,
+      running: this.runningTasks.has(task.name),
     };
   }
 
@@ -242,6 +246,7 @@ export class TaskManager {
     if (!task) throw new Error(`Task "${name}" not found`);
 
     await this.notify(); // notify: task is starting
+    this.runningTasks.add(name);
 
     // Fixed name per task: one sandbox, one session file, forever
     const runName = name;
@@ -287,6 +292,7 @@ export class TaskManager {
       console.error(`[task-manager] Task "${name}" failed:`, err.message);
       throw err;
     } finally {
+      this.runningTasks.delete(name);
       await this.notify(); // notify: task finished (success or failure)
     }
   }
