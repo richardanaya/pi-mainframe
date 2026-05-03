@@ -318,12 +318,7 @@ function renderTasks() {
     // Click to open the task's thread
     el.addEventListener("click", (e) => {
       if (e.target.closest("button")) return;
-      const sandboxId = window._taskSandboxMap?.get(t.name);
-      if (sandboxId) {
-        selectThread(sandboxId);
-      } else {
-        addSystemMessage(`Task sandbox not found — run the task first`, true);
-      }
+      selectThread(t.name); // pass the task name
     });
 
     $taskList.appendChild(el);
@@ -397,11 +392,26 @@ async function createTask() {
 
 // ── Sessions ────────────────────────────────────────────────────────────────
 
-async function selectThread(threadId) {
-  selectedThreadId = threadId;
-  updateURL(threadId);
+async function selectThread(identifier) {
+  // Resolve identifier to sandbox ID and display name
+  let sandboxId = identifier;
+  let displayName = identifier;
+  let thread = threads.find((t) => t.id === identifier);
 
-  if (!threadId) {
+  // Check if identifier is a task name
+  const taskSandboxId = window._taskSandboxMap?.get(identifier);
+  if (taskSandboxId) {
+    sandboxId = taskSandboxId;
+    displayName = identifier;
+    thread = null;
+  } else if (thread) {
+    displayName = stripPrefix(thread.name);
+  }
+
+  selectedThreadId = sandboxId;
+  updateURL(identifier); // keep the name in the URL
+
+  if (!identifier) {
     $chatView.classList.add("hidden");
     renderThreads();
     return;
@@ -410,21 +420,14 @@ async function selectThread(threadId) {
   $chatView.classList.remove("hidden");
   renderThreads();
 
-  let thread = threads.find((t) => t.id === threadId);
   if (thread) {
     $threadName.textContent = stripPrefix(thread.name);
     $threadStatus.className = "status-dot " + (thread.state || "");
+  } else if (taskSandboxId) {
+    $threadName.textContent = displayName;
+    $threadStatus.className = "status-dot started";
   } else {
-    // Check if this is a task thread
-    const taskEntry = Array.from(window._taskSandboxMap?.entries() || []).find(
-      ([, id]) => id === threadId
-    );
-    if (taskEntry) {
-      $threadName.textContent = taskEntry[0];
-      $threadStatus.className = "status-dot started";
-    } else {
-      $threadName.textContent = threadId;
-    }
+    $threadName.textContent = identifier;
   }
 
   // Clear messages
@@ -439,19 +442,19 @@ async function selectThread(threadId) {
   // ── Auto-start if sandbox is stopped ──
   const isStopped =
     thread?.state === "stopped" ||
-    (taskEntry && (await api(`/api/sandboxes/${threadId}`)).state === "stopped");
+    (taskSandboxId && (await api(`/api/sandboxes/${sandboxId}`)).state === "stopped");
 
   if (isStopped) {
     addSystemMessage("Sandbox is stopped — starting it…");
     try {
-      await api(`/api/sandboxes/${threadId}/start`, { method: "POST" });
+      await api(`/api/sandboxes/${sandboxId}/start`, { method: "POST" });
 
       // Poll until started (max ~60s)
       let started = false;
       for (let i = 0; i < 30; i++) {
         await new Promise((r) => setTimeout(r, 2000));
         await loadThreads();
-        const refreshed = threads.find((t) => t.id === threadId);
+        const refreshed = threads.find((t) => t.id === sandboxId);
         if (refreshed && refreshed.state === "started") {
           started = true;
           $threadStatus.className = "status-dot started";
@@ -471,20 +474,18 @@ async function selectThread(threadId) {
   }
 
   // Create a pi session connected to this sandbox.
-  // pi-daytona's session_start hook finds the existing sandbox by ID/name
-  // and connects the session's tools (bash, read, write, etc.) to it.
   try {
     const session = await api("/api/sessions", {
       method: "POST",
       body: JSON.stringify({
         sandbox: true,
-        sandboxName: threadId,
+        sandboxName: sandboxId,
         tools: "coding",
         thinkingLevel: "off",
-        label: stripPrefix(thread?.name || threadId),
+        label: displayName,
       }),
     });
-    activeSession = { sessionId: session.id, threadId };
+    activeSession = { sessionId: session.id, threadId: sandboxId };
 
     // Load existing messages
     const msgData = await api(`/api/sessions/${session.id}/messages`);
@@ -498,7 +499,7 @@ async function selectThread(threadId) {
       }
     }
 
-    addSystemMessage(`Connected to sandbox — ${thread?.name || threadId}`);
+    addSystemMessage(`Connected to sandbox — ${displayName}`);
   } catch (err) {
     addSystemMessage(`Session error: ${err.message}`, true);
   }
@@ -695,16 +696,21 @@ $promptInput.addEventListener("keydown", (e) => {
 
   // Auto-select thread from URL on initial load
   const threadFromURL = getThreadFromURL();
-  if (threadFromURL && threads.find((t) => t.id === threadFromURL)) {
-    selectThread(threadFromURL);
+  if (threadFromURL) {
+    // Could be a thread ID or a task name
+    const isThread = threads.find((t) => t.id === threadFromURL);
+    const isTask = tasks.find((t) => t.name === threadFromURL);
+    if (isThread || isTask) {
+      selectThread(threadFromURL);
+    }
   }
 
   // Handle browser back/forward
   window.addEventListener("popstate", () => {
     const id = getThreadFromURL();
-    if (id && id !== selectedThreadId) {
+    if (id) {
       selectThread(id);
-    } else if (!id && selectedThreadId) {
+    } else {
       selectThread(null);
     }
   });
